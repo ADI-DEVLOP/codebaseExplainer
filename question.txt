@@ -1,0 +1,10 @@
+Why chunking is important (interview gold)
+❓ Why not send full file to LLM?
+Answer:Large files exceed token limits and reduce retrieval accuracy. Chunking allows precise retrieval of relevant parts.
+
+Why embeddings?
+Answer:Embeddings convert text into numerical vectors so we can perform semantic similarity search instead of keyword matching.
+
+What challenges did you face?
+Answer:I encountered API rate limits, so I optimized context size and retrieval depth to reduce token usage and improve efficiency.
+I implemented caching, reduced retrieval size, and optimized token usage to handle API rate limits efficiently.

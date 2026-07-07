@@ -1,0 +1,67 @@
+Runtime flow
+============
+
+1. User sends a request to the FastAPI backend.
+
+2. FastAPI routes the request in app/main.py:
+   - GET / returns a health message.
+   - POST /ask answers a question about the repo.
+   - GET /summary summarizes the repo.
+   - GET /ask-file explains one matching file.
+
+3. For /ask, /summary, and /ask-file, app/main.py calls get_rag_index().
+
+4. get_rag_index() builds the RAG index only once per server process:
+   - core/loader.py reads supported files from data/repo.
+   - core/chunker.py splits file contents into chunks.
+   - core/embeddings.py loads SentenceTransformer lazily and embeds chunks.
+   - core/vector_store.py stores embeddings in FAISS.
+   - The chunks, texts, and FAISS store are cached in memory as rag_index.
+
+5. /ask flow:
+   - If the exact question is already in cache, return the cached answer.
+   - Embed the user question.
+   - Search FAISS for the most relevant code chunk.
+   - Send the retrieved context and question to llm/explainer.py.
+   - Cache and return the answer.
+
+6. /summary flow:
+   - If summary_cache exists, return it.
+   - Use the first few chunks as context.
+   - Ask llm/explainer.py to explain the codebase.
+   - Cache and return the summary.
+
+7. /ask-file flow:
+   - Find chunks whose source path contains the requested file name.
+   - Send the matching file context to llm/explainer.py.
+   - Return the answer.
+
+8. llm/explainer.py:
+   - Loads Groq lazily only when an answer is needed.
+   - Uses GROQ_MODEL from .env, defaulting to llama-3.3-70b-versatile.
+   - Returns a fallback explanation if the Groq API rate limit is hit.
+
+
+Current project structure
+=========================
+
+codebase/
+|-- app/
+|   |-- main.py              # FastAPI entry point and routes
+|
+|-- core/
+|   |-- loader.py            # Load repo files from data/repo
+|   |-- chunker.py           # Split files into chunks
+|   |-- embeddings.py        # Lazy SentenceTransformer embeddings
+|   |-- vector_store.py      # FAISS vector store
+|
+|-- llm/
+|   |-- explainer.py         # Groq call and fallback response
+|
+|-- data/
+|   |-- repo/                # Code being explained
+|
+|-- requirements.txt
+|-- steps.txt
+|-- test_rag.py
+|-- .env
